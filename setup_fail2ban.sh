@@ -9,39 +9,47 @@ FINDTIME="10m"          # Период анализа логов
 MAXRETRY=5              # Максимум попыток
 ALLOWED_IPS="127.0.0.1/8 ::1 10.100.10.0/24" # Разрешённые IP/подсети
 
+### ЦВЕТА ###
+ESC=$(printf '\033') RESET="${ESC}[0m" MAGENTA="${ESC}[35m" RED="${ESC}[31m" GREEN="${ESC}[32m"
+
+### Функции цветного вывода ###
+magentaprint() { echo; printf "${MAGENTA}%s${RESET}\n" "$1"; }
+errorprint() { echo; printf "${RED}%s${RESET}\n" "$1"; }
+greenprint() { echo; printf "${GREEN}%s${RESET}\n" "$1"; }
+
 
 # ---------------------------------------------------------------------------------------
 
 
 # --- Проверка запуска через sudo ---
 if [ -z "$SUDO_USER" ]; then
-    echo "Пожалуйста, запустите скрипт через sudo."
+    errorprint "Пожалуйста, запустите скрипт через sudo."
     exit 1
 fi
 
 # --- Функция для проверки и установки пакетов ---
 install_packages() {
-    echo "Проверка и установка необходимых пакетов..."
+    magentaprint "Проверка и установка необходимых пакетов..."
     if ! rpm -q epel-release > /dev/null; then
-        dnf install -y epel-release || { echo "Ошибка установки epel-release" >&2; exit 1; }
+        dnf install -y epel-release || { errorprint "Ошибка установки epel-release" >&2; exit 1; }
     fi
-    dnf install -y fail2ban fail2ban-firewalld || { echo "Ошибка установки Fail2Ban" >&2; exit 1; }
-    echo "Пакеты установлены"
+    dnf install -y fail2ban fail2ban-firewalld || { errorprint "Ошибка установки Fail2Ban" >&2; exit 1; }
+    greenprint "Пакеты установлены"
 }
 
 # --- Проверка и запуск firewalld ---
 configure_firewalld() {
-    echo "Настройка firewalld..."
+    magentaprint "Настройка firewalld..."
     if ! systemctl is-active --quiet firewalld; then
-        systemctl start firewalld || { echo "Ошибка запуска firewalld" >&2; exit 1; }
+        systemctl start firewalld || { errorprint "Ошибка запуска firewalld" >&2; exit 1; }
         systemctl enable firewalld
     fi
-    echo "firewalld работает"
+    greenprint "firewalld работает"
 }
 
 # --- Создание базовой конфигурации Fail2Ban ---
 configure_fail2ban() {
-    echo "Создание конфигурации Fail2Ban..."
+    magentaprint "Создание конфигурации Fail2Ban..."
 
     # --- Создание директории jail.d, если не существует ---
     mkdir -p "$JAIL_D_DIR"
@@ -75,21 +83,21 @@ findtime = $FINDTIME
 EOF
 
     # --- Проверка синтаксиса конфигурации ---
-    fail2ban-client -t || { echo "Ошибка в конфигурации Fail2Ban" >&2; exit 1; }
-    echo "Конфигурация создана"
+    fail2ban-client -t || { errorprint "Ошибка в конфигурации Fail2Ban" >&2; exit 1; }
+    greenprint "Конфигурация создана"
 }
 
 # --- Запуск и проверка Fail2Ban ---
 start_fail2ban() {
-    echo "Запуск Fail2Ban..."
-    systemctl restart fail2ban || { echo "Ошибка перезапуска Fail2Ban" >&2; exit 1; }
+    magentaprint "Запуск Fail2Ban..."
+    systemctl restart fail2ban || { errorprint "Ошибка перезапуска Fail2Ban" >&2; exit 1; }
     systemctl enable fail2ban
     sleep 5
     if ! fail2ban-client status > /dev/null; then
-        echo "Ошибка: Fail2Ban не запустился" >&2
+        errorprint "Ошибка: Fail2Ban не запустился" >&2
         exit 1
     fi
-    echo "Fail2Ban запущен. Статус:"
+    magentaprint "Fail2Ban запущен. Статус:"
     fail2ban-client status
 }
 
@@ -104,13 +112,12 @@ start_fail2ban() {
 
 # --- Тестирование и логирование ---
 test_setup() {
-    echo "Проверка настроенных jails..."
+    magentaprint "Проверка настроенных jails..."
     for jail in sshd apache-auth; do
         if [ -f "$JAIL_D_DIR/$jail.conf" ]; then
-            fail2ban-client status "$jail" && echo "Jail $jail активен"
+            fail2ban-client status "$jail" && greenprint "Jail $jail активен"
         fi
     done
-    echo "Логи Fail2Ban: /var/log/fail2ban.log"
 }
 
 # --- Основной процесс ---
@@ -121,12 +128,13 @@ main() {
     configure_fail2ban
     start_fail2ban
     test_setup
-    echo "Настройка Fail2Ban завершена успешно."
+    greenprint "Настройка Fail2Ban завершена успешно."
 }
 
 main
 
 # --- Инструкции по использованию ---
+magentaprint "Инструкции по использованию Fail2Ban:"
 echo "Для проверки логов: tail -f /var/log/fail2ban.log"
 echo "Для проверки статуса: fail2ban-client status"
 echo "Для ручной блокировки IP: fail2ban-client set sshd banip <IP>"
