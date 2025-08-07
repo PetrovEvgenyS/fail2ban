@@ -59,27 +59,27 @@ configure_fail2ban() {
 [DEFAULT]
 # Глобальные настройки Fail2Ban
 
-ignoreip = $ALLOWED_IPS
-bantime = $BANTIME
-findtime = $FINDTIME
-maxretry = $MAXRETRY
-backend = auto
-banaction = firewallcmd-ipset
-# action = %(action_mw)s
-# destemail = admin@example.com
-# sendername = Fail2Ban
-# mta = sendmail
+ignoreip = $ALLOWED_IPS        # IP-адреса/подсети, которые не будут блокироваться
+bantime = $BANTIME             # Время блокировки IP
+findtime = $FINDTIME           # Период, за который считаются неудачные попытки
+maxretry = $MAXRETRY           # Количество неудачных попыток до блокировки
+backend = auto                 # Механизм чтения логов (auto - автоматически)
+banaction = firewallcmd-ipset  # Действие при блокировке (firewalld через ipset)
+# action = %(action_mw)s       # Альтернативное действие (например, с уведомлением)
+# destemail = admin@example.com # Email для уведомлений
+# sendername = Fail2Ban        # Имя отправителя уведомлений
+# mta = sendmail               # Почтовый транспорт для отправки писем
 EOF
 
     # --- Настройка SSH jail ---
     cat > "$JAIL_D_DIR/sshd.conf" << EOF
 [sshd]
-enabled = true
-port = ssh
-logpath = /var/log/secure
-maxretry = $MAXRETRY
-bantime = $BANTIME
-findtime = $FINDTIME
+enabled = true                 # Включить защиту для SSH
+port = ssh                     # Порт для мониторинга (обычно ssh)
+logpath = /var/log/secure      # Путь к логу SSH
+maxretry = $MAXRETRY           # Количество неудачных попыток до блокировки
+bantime = $BANTIME             # Время блокировки IP
+findtime = $FINDTIME           # Период, за который считаются неудачные попытки
 EOF
 
     # --- Проверка синтаксиса конфигурации ---
